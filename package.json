@@ -1,0 +1,14 @@
+{
+  "name": "endecrypt",
+  "version": "1.0.0",
+  "description": "Encrypt Decrypt via REST API",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./index.js"
+  },
+  "author": "Tabish Zaidi",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.16.4"
+  }
+}
