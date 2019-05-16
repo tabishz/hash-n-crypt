@@ -88,7 +88,6 @@ app.use('/encrypt', function(req, res) {
 	let startTime = process.hrtime()[1];
 	let text = req.body.text;
 	let key = req.body.key;
-	let ivLength = req.body.ivLength;
 	let algo = req.body.algo;
 	let enc = req.body.enc;
 	let msg, timeTaken;
@@ -104,10 +103,29 @@ app.use('/encrypt', function(req, res) {
 	});
 });
 
-function encrypt(text, ciphalgo='des-ede-cbc', key, enc='hex', callback) {
+app.use('/decrypt', function(req, res) {
+	
+	let startTime = process.hrtime()[1];
+	let text = req.body.text;
+	let key = req.body.key;
+	let algo = req.body.algo;
+	let enc = req.body.enc;
+	let msg, timeTaken;
+	
+	decrypt(text, algo, key, enc, (dR) => {
+		if (dR.status == false) { 
+			msg = 'Unacceptable values Algorithm or Encoding. Or, insufficient length for key or IV.'; timeTaken = process.hrtime()[1] - startTime;
+			res.json({message: msg, status: {algorithm: algo, encoding: enc, timeTaken: timeTaken}, cipherRequirements: dR.cipherRequirements });
+		} else { 
+			msg = 'Received and Processed'; timeTaken = dR.t - startTime;
+			res.json({message: msg, status: {algorithm: algo, encoding: enc, timeTaken: timeTaken}, decryptedString: dR.decryptedText });
+		}
+	});
+});
+
+function encrypt(text, ciphalgo='aes-256-cbc', key, enc='hex', callback) {
 	let i = allowedCiphers.findIndex(x => x.name == ciphalgo);
-	let a;
-	let e = allowed_encodings.indexOf(enc);
+	let a; let e = allowed_encodings.indexOf(enc);
 	let iv = crypto.randomBytes(allowedCiphers[i].ivLength);
 	// console.log(`a(${ciphalgo}): ${a}, e(${enc}): ${e}, iv.length: ${iv.length}, key.length: ${key.length}`);
 	if (i === -1) { a = false } else {a = true};
@@ -123,22 +141,24 @@ function encrypt(text, ciphalgo='des-ede-cbc', key, enc='hex', callback) {
 	}
 }
 
-function decrypt(text, ciphalgo='aes-256-cbc', key, iv, enc='hex') {
- //let iv = Buffer.from(text.iv, 'hex');
- let encryptedText = Buffer.from(text.encryptedData, 'hex');
- let decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(key), iv);
- let decrypted = decipher.update(encryptedText);
- decrypted = Buffer.concat([decrypted, decipher.final()]);
- return decrypted.toString();
+function decrypt(text, ciphalgo='aes-256-cbc', key, enc='hex', callback) {
+	let i = allowedCiphers.findIndex(x => x.name == ciphalgo);
+	let a; let e = allowed_encodings.indexOf(enc);
+	if (i === -1) { a = false } else {a = true};
+	if (e === -1) { e = false } else {e = true};
+
+	if (a && e && key.length == allowedCiphers[i].keyLength) {
+		let iv = Buffer.from(text.iv, enc);
+		let encryptedText = Buffer.from(text.encryptedData, enc);
+		let decipher = crypto.createDecipheriv(ciphalgo, Buffer.from(key), iv);
+		let decrypted = decipher.update(encryptedText);
+		decrypted = Buffer.concat([decrypted, decipher.final()]);
+		return callback({decryptedText: decrypted.toString(), t: process.hrtime()[1] });
+	} else {
+		return callback({status: false, cipherRequirements: allowedCiphers[i] });
+	}
 }
 
-
-// function decrypt(algorithm,password,text){
-//     let decipher = crypto.createDecipher(algorithm,password);
-//     let dec = decipher.update(text,'base64','utf8');
-//     dec += decipher.final('utf8');
-//     return dec;
-// }
 
 function pbkdf2(secret, salt='saltie', iterations=2048, keylen=256, algo='sha1', enc='hex', callback) {
 	let a = allowed_algos.indexOf(algo);
