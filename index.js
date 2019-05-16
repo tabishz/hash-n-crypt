@@ -98,7 +98,7 @@ app.use('/encrypt', function(req, res) {
 			res.json({message: msg, status: {algorithm: algo, encoding: enc, timeTaken: timeTaken}, cipherRequirements: eR.cipherRequirements });
 		} else { 
 			msg = 'Received and Processed'; timeTaken = eR.t - startTime;
-			res.json({message: msg, status: {algorithm: algo, encoding: enc, timeTaken: timeTaken}, encryptedString: { encryptedData: eR.encryptedData, iv: eR.iv } });
+			res.json({message: msg, status: {algorithm: eR.cipherRequirements, encoding: enc, timeTaken: timeTaken}, encryptedString: { encryptedData: eR.encryptedData, iv: eR.iv } });
 		}
 	});
 });
@@ -118,7 +118,7 @@ app.use('/decrypt', function(req, res) {
 			res.json({message: msg, status: {algorithm: algo, encoding: enc, timeTaken: timeTaken}, cipherRequirements: dR.cipherRequirements });
 		} else { 
 			msg = 'Received and Processed'; timeTaken = dR.t - startTime;
-			res.json({message: msg, status: {algorithm: algo, encoding: enc, timeTaken: timeTaken}, decryptedString: dR.decryptedText });
+			res.json({message: msg, status: {algorithm: dR.cipherRequirements, encoding: enc, timeTaken: timeTaken}, decryptedString: dR.decryptedText });
 		}
 	});
 });
@@ -135,7 +135,7 @@ function encrypt(text, ciphalgo='aes-256-cbc', key, enc='hex', callback) {
 		let cipher = crypto.createCipheriv(ciphalgo, Buffer.from(key), iv);
 		let encrypted = cipher.update(text);
 		encrypted = Buffer.concat([encrypted, cipher.final()]);
-		return callback({ status: true, iv: iv.toString(enc), encryptedData: encrypted.toString(enc), t: process.hrtime()[1] });
+		return callback({ status: true, iv: iv.toString(enc), encryptedData: encrypted.toString(enc), t: process.hrtime()[1], cipherRequirements: allowedCiphers[i] });
 	} else {
 		return callback({status: false, cipherRequirements: allowedCiphers[i] });
 	}
@@ -146,9 +146,9 @@ function decrypt(text, ciphalgo='aes-256-cbc', key, enc='hex', callback) {
 	let a; let e = allowed_encodings.indexOf(enc);
 	if (i === -1) { a = false } else {a = true};
 	if (e === -1) { e = false } else {e = true};
+	let iv = Buffer.from(text.iv, enc);
 
-	if (a && e && key.length == allowedCiphers[i].keyLength) {
-		let iv = Buffer.from(text.iv, enc);
+	if (a && e && key.length == allowedCiphers[i].keyLength && iv.length == allowedCiphers[i].ivLength) {
 		let encryptedText = Buffer.from(text.encryptedData, enc);
 		let decipher = crypto.createDecipheriv(ciphalgo, Buffer.from(key), iv);
 		let decrypted = decipher.update(encryptedText);
