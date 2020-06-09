@@ -1,4 +1,5 @@
 const crypto = require('crypto'), algorithm = 'aes-256-ctr', passie = 'tux.indigo';
+const SecureConf = require('secure-conf');
 var express    = require('express');        // call express
 var app        = express();                 // define our app using express
 
@@ -83,6 +84,26 @@ function hashit(text, algo, enc) {
 	}
 }
 
+
+app.use('/simple', function(req, res) {
+	
+	let text = req.body.text;
+	let key = req.body.key;
+	let algo = req.body.algo;
+	let dowhat = req.body.dowhat;
+	
+	if (dowhat == 'encrypt') {
+		simpleEncrypt(text,key,algo, function(encryptedText) {
+			res.json({encryptedText});
+		});
+	} else if (dowhat == 'decrypt') {
+		simpleDecrypt(text,key,algo, function(decryptedText) {
+			res.json({decryptedText});
+		});
+	}
+
+});
+
 app.use('/encrypt', function(req, res) {
 	
 	let startTime = process.hrtime()[1];
@@ -101,6 +122,30 @@ app.use('/encrypt', function(req, res) {
 			res.json({message: msg, status: {algorithm: eR.cipherRequirements, encoding: enc, timeTaken: timeTaken}, encryptedString: { encryptedData: eR.encryptedData, iv: eR.iv } });
 		}
 	});
+});
+
+app.use('/ecnryptFile', function(req, res) {
+	
+	// let startTime = process.hrtime()[1];
+	let inputFile = req.body.inputFilePath;
+	let outputFile = req.body.outputFilePath;
+	// let msg, timeTaken;
+	
+	var sconf = new SecureConf();
+	sconf.encryptFile(
+	    inputFile,
+	    outputFile,
+	    function(err, f, ef, ec) {
+	        if (err) {
+	            consoel.log("failed to encrypt %s, error is %s", f, err);
+	            res.json({message: `Failed to Encrypt File ${f} error: ${err}`});
+	        } else {
+	            console.log("encrypt %s to %s complete.", f, ef);
+	            console.log("encrypted contents are %s", ec);
+	            res.json({message: `Encrypted content for file ${f}`, encryptedContent: ec});
+	        }
+	    }
+	);
 });
 
 app.use('/decrypt', function(req, res) {
@@ -179,6 +224,20 @@ function pbkdf2(secret, salt='saltie', iterations=2048, keylen=256, algo='sha1',
 	} else {
 		return callback(false);
 	}
+}
+
+function simpleEncrypt(text,password,algorithm,callback){
+  var cipher = crypto.createCipher(algorithm,password);
+  var crypted = cipher.update(text,'utf8','hex');
+  crypted += cipher.final('hex');
+  return callback(crypted);
+}
+
+function simpleDecrypt(text,password,algorithm,callback){
+  var decipher = crypto.createDecipher(algorithm,password)
+  var dec = decipher.update(text,'hex','utf8')
+  dec += decipher.final('utf8');
+  return callback(dec);
 }
 
 // START THE SERVER
