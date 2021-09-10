@@ -29,13 +29,6 @@ router.get('/', function(req, res) {
     res.json({ message: 'Welcome to Hashing API', allowedHashAlgos: allowed_algos, allowedEncodings: allowed_encodings, allowedCiphers: allowedCiphers, method: 'Send to /hash with JSON body with variables: "text", "algo", and "enc" with allowed values as strings.' });
 });
 
-// Test for params
-router.get('/:tableName', (req, res) => {
-	res.json({
-		msg: `You've sent request for table: ${req.params.tableName}`,
-	});
-});
-
 // more routes for our API will happen here
 
 // REGISTER OUR ROUTES -------------------------------
